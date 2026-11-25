@@ -1,8 +1,7 @@
 package com.algaworks.algashop.ordering.domain.entity;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.algaworks.algashop.ordering.exception.CustomerArchivedException;
+import lombok.Builder;
 import org.apache.commons.validator.routines.EmailValidator;
 
 import java.io.Serializable;
@@ -24,86 +23,98 @@ public class Customer implements Serializable {
     private OffsetDateTime archivedAt;
     private Integer loyaltyPoints;
 
-    public Customer(UUID id, String fullName, LocalDate birthDate, String email,
-                    String phone, String document, Boolean promotionNotificationsAllowed,
-                    OffsetDateTime registeredAt) {
-        this.id = id;
-        this.fullName = fullName;
-        this.birthDate = birthDate;
-        this.email = email;
-        this.phone = phone;
-        this.document = document;
-        this.promotionNotificationsAllowed = promotionNotificationsAllowed;
-        this.registeredAt = registeredAt;
+    @Builder(builderClassName = "BrandNewCustomerBuild", builderMethodName = "brandNewCustomer")
+    private static Customer brandNew(String fullName, LocalDate birthDate, String email, String phone,
+                                    String document, Boolean promotionNotificationsAllowed, Boolean archived,
+                                    OffsetDateTime registeredAt, OffsetDateTime archivedAt, Integer loyaltyPoints) {
+
+        return new Customer(UUID.randomUUID(), fullName, birthDate, email, phone,
+                document, promotionNotificationsAllowed, false,
+                OffsetDateTime.now(), null, 0);
     }
 
-    public Customer(UUID id, String fullName, LocalDate birthDate, String email, String phone,
+    private Customer(UUID id, String fullName, LocalDate birthDate, String email, String phone,
                     String document, Boolean promotionNotificationsAllowed, Boolean archived,
                     OffsetDateTime registeredAt, OffsetDateTime archivedAt, Integer loyaltyPoints) {
-        this.id = id;
-        this.fullName = fullName;
-        this.birthDate = birthDate;
-        this.email = email;
-        this.phone = phone;
-        this.document = document;
-        this.promotionNotificationsAllowed = promotionNotificationsAllowed;
-        this.archived = archived;
-        this.registeredAt = registeredAt;
-        this.archivedAt = archivedAt;
-        this.loyaltyPoints = loyaltyPoints;
+        this.setId(id);
+        this.setFullName(fullName);
+        this.setBirthDate(birthDate);
+        this.setEmail(email);
+        this.setPhone(phone);
+        this.setDocument(document);
+        this.setPromotionNotificationsAllowed(promotionNotificationsAllowed);
+        this.setArchived(archived);
+        this.setRegisteredAt(registeredAt);
+        this.setArchivedAt(archivedAt);
+        this.setLoyaltyPoints(loyaltyPoints);
     }
 
     public void addLoyaltyPoints(Integer points) {
-
+        verifyChangeable();
+        if (points == null || points < 0) {
+            throw new IllegalArgumentException("Points cannot be null or negative");
+        }
+        this.setLoyaltyPoints(this.loyaltyPoints + points);
     }
 
     public void archive() {
+        verifyChangeable();
         this.setArchived(true);
         this.setArchivedAt(OffsetDateTime.now());
+        this.setFullName("Anonymous");
+        this.setPhone("000000000");
+        this.setEmail(UUID.randomUUID() + "@example.com");
+        this.setBirthDate(null);
     }
 
     public void enablePromotionNotifications() {
+        verifyChangeable();
         this.setPromotionNotificationsAllowed(true);
     }
 
     public void disablePromotionNotifications() {
+        verifyChangeable();
         this.setPromotionNotificationsAllowed(false);
     }
 
     public void changeName(String fullName) {
+        verifyChangeable();
         Objects.requireNonNull(fullName);
-        if(fullName.isBlank()) {
+        if (fullName.isBlank()) {
             throw new IllegalArgumentException("Full name cannot be blank");
         }
         this.setFullName(fullName);
     }
 
     public void changeEmail(String email) {
+        verifyChangeable();
         this.setEmail(email);
     }
 
     public void changePhone(String phone) {
+        verifyChangeable();
         this.setPhone(phone);
     }
 
     private void setId(UUID id) {
+        Objects.requireNonNull(id);
         this.id = id;
     }
 
     private void setFullName(String fullName) {
         Objects.requireNonNull(fullName);
-        if(fullName.isBlank()) {
+        if (fullName.isBlank()) {
             throw new IllegalArgumentException("Full name cannot be blank");
         }
         this.fullName = fullName;
     }
 
     private void setBirthDate(LocalDate birthDate) {
-        if(birthDate == null) {
-            this.birthDate =null;
+        if (birthDate == null) {
+            this.birthDate = null;
             return;
         }
-        if(birthDate.isAfter(LocalDate.now())) {
+        if (birthDate.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("Birth date cannot be in the future");
         }
 
@@ -112,11 +123,11 @@ public class Customer implements Serializable {
 
     private void setEmail(String email) {
         Objects.requireNonNull(email);
-        if(email.isBlank()) {
+        if (email.isBlank()) {
             throw new IllegalArgumentException();
         }
 
-        if(EmailValidator.getInstance().isValid(email)) {
+        if (!EmailValidator.getInstance().isValid(email)) {
             throw new IllegalArgumentException("Invalid email");
         }
 
@@ -124,18 +135,22 @@ public class Customer implements Serializable {
     }
 
     private void setPhone(String phone) {
+        Objects.requireNonNull(phone);
         this.phone = phone;
     }
 
     private void setDocument(String document) {
+        Objects.requireNonNull(document);
         this.document = document;
     }
 
     private void setPromotionNotificationsAllowed(Boolean promotionNotificationsAllowed) {
+        verifyChangeable();
         this.promotionNotificationsAllowed = promotionNotificationsAllowed;
     }
 
     private void setArchived(Boolean archived) {
+        Objects.requireNonNull(archived);
         this.archived = archived;
     }
 
@@ -148,7 +163,17 @@ public class Customer implements Serializable {
     }
 
     private void setLoyaltyPoints(Integer loyaltyPoints) {
+        Objects.requireNonNull(loyaltyPoints);
+        if (loyaltyPoints < 0) {
+            throw new IllegalArgumentException("Loyalty points cannot be negative");
+        }
         this.loyaltyPoints = loyaltyPoints;
+    }
+
+    private void verifyChangeable() {
+        if (this.archived) {
+            throw new CustomerArchivedException("Customer is already archived");
+        }
     }
 
     @Override

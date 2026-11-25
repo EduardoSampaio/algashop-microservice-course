@@ -28,6 +28,7 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	implementation 'commons-validator:commons-validator:1.10.1'
+	implementation "org.assertj:assertj-core:3.27.7"
 }
 
 tasks.named('test') {
